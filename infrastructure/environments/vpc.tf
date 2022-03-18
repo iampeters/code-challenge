@@ -80,7 +80,7 @@ resource "aws_subnet" "public_subnet" {
   tags = {
     Application = "ceros-ski"
     Environment = var.environment
-    Name        = "ceros-ski-${var.environment}-eu-west-1a-public"
+    Name        = "ceros-ski-${var.environment}-${data.aws_availability_zones.available.names[count.index]}-public"
     Resource    = "modules.availability_zone.aws_subnet.public_subnet"
   }
 }
@@ -92,7 +92,8 @@ resource "aws_subnet" "public_subnet" {
 */
 resource "aws_nat_gateway" "nat_gateway" {
   allocation_id = aws_eip.eip_for_the_nat_gateway.id
-  subnet_id     = aws_subnet.public_subnet.0.id
+  subnet_id     = element(aws_subnet.public_subnet.*.id, count.index)
+  count         = 1
 
   tags = {
     Application = "ceros-ski"
@@ -112,11 +113,12 @@ resource "aws_nat_gateway" "nat_gateway" {
 */
 resource "aws_route_table" "public_route_table" {
   vpc_id = aws_vpc.main_vpc.id
+  count  = var.az_count
 
   tags = {
     Application = "ceros-ski"
     Environment = var.environment
-    Name        = "ceros-ski-${var.environment}-eu-west-1a-public"
+    Name        = "ceros-ski-${var.environment}-${data.aws_availability_zones.available.names[count.index]}-public"
     Resource    = "modules.availability_zone.aws_route_table.public_route_table"
   }
 }
@@ -126,7 +128,8 @@ resource "aws_route_table" "public_route_table" {
 * gateway.
 */
 resource "aws_route" "route_from_public_route_table_to_internet" {
-  route_table_id         = aws_route_table.public_route_table.id
+  count = var.az_count
+  route_table_id         = element(aws_route_table.public_route_table.*.id, count.index)
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.main_internet_gateway.id
 
@@ -136,8 +139,9 @@ resource "aws_route" "route_from_public_route_table_to_internet" {
 * Associate the public route table with the public subnet.
 */
 resource "aws_route_table_association" "public_route_table_to_public_subnet_association" {
-  subnet_id      = aws_subnet.public_subnet.0.id
-  route_table_id = aws_route_table.public_route_table.id
+  count          = var.az_count
+  subnet_id      = element(aws_subnet.public_subnet.*.id, count.index)
+  route_table_id = element(aws_route_table.public_route_table.*.id, count.index)
 }
 
 
@@ -153,16 +157,14 @@ resource "aws_route_table_association" "public_route_table_to_public_subnet_asso
 */
 resource "aws_subnet" "private_subnet" {
   vpc_id = aws_vpc.main_vpc.id
-  # availability_zone = "eu-west-1a"
-  # cidr_block        = "172.0.2.0/24"
-  count = 1
+  count = var.az_count
   availability_zone = data.aws_availability_zones.available.names[count.index]
-  cidr_block        = cidrsubnet(aws_vpc.main_vpc.cidr_block, 8, 1 + count.index)
+  cidr_block        = cidrsubnet(aws_vpc.main_vpc.cidr_block, 8, count.index)
 
   tags = {
     Application = "ceros-ski"
     Environment = var.environment
-    Name        = "ceros-ski-${var.environment}-eu-west-1a-private"
+    Name        = "ceros-ski-${var.environment}-${data.aws_availability_zones.available.names[count.index]}-private"
     Resource    = "modules.availability_zone.aws_subnet.private_subnet"
   }
 }
@@ -172,11 +174,12 @@ resource "aws_subnet" "private_subnet" {
 */
 resource "aws_route_table" "private_route_table" {
   vpc_id = aws_vpc.main_vpc.id
+  count = var.az_count
 
   tags = {
     Application = "ceros-ski"
     Environment = var.environment
-    Name        = "ceros-ski-${var.environment}-eu-west-1a-private"
+    Name        = "ceros-ski-${var.environment}-${data.aws_availability_zones.available.names[count.index]}-private"
     Resource    = "modules.availability_zone.aws_route_table.private_route_table"
   }
 }
@@ -186,15 +189,17 @@ resource "aws_route_table" "private_route_table" {
 * Gateway.
 */
 resource "aws_route" "route_from_private_route_table_to_internet" {
-  route_table_id         = aws_route_table.private_route_table.id
+  count = var.az_count
+  route_table_id         = element(aws_route_table.private_route_table.*.id, count.index)
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.nat_gateway.id
+  nat_gateway_id         = element(aws_nat_gateway.nat_gateway.*.id, count.index)
 }
 
 /**
 * Associate the private route table with the private subnet.
 */
 resource "aws_route_table_association" "private_route_table_to_private_subnet_association" {
-  subnet_id      = aws_subnet.private_subnet.0.id
-  route_table_id = aws_route_table.private_route_table.id
+  count = var.az_count
+  subnet_id      = element(aws_subnet.private_subnet.*.id, count.index)
+  route_table_id = element(aws_route_table.private_route_table.*.id, count.index)
 }
