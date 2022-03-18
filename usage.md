@@ -78,9 +78,89 @@ can use `terraform apply` to create the ECS infrastructure.  Currently, the
 infrastructure is non-functional.  We leave it as an exercise for the reader to
 amend that.
 
-===========================
+===========================================================================================
 
-## Ceros challenge solution
+## Ceros challenge
 
-### Dockerfile
+### Create the ECR repository
 
+```bash
+# Change directory from the root directory to `infrastructure/repositories`.Run the command below
+
+cd infrastructure/repositories
+```
+
+```bash
+# Update with `terraform.tfvars` file with the correct value of the provided variables
+# Plan the infrastructure by running the following command
+
+terraform plan --var-file terraform.tfvars \
+    -out terraform.tfplan.d/terraform.tfplan \
+    -state terraform.tfstate \
+    -state-out terraform.tfstate
+```
+
+```bash
+# If all goes well, apply the plan by running the following command
+# The repository_url will be outputted on the console.
+# Copy it out for later use in the build script
+
+terraform apply "terraform.tfplan.d/terraform.tfplan"
+```
+
+
+### Build and push the image
+
+The build script is defined in `app/build.sh` in the root directory.
+
+Update the environment variable value `REPO_URL` with the `repository_url` outputted from the ECR repository.
+
+To build and push the image run
+
+```bash
+./build.sh
+```
+
+### ECS cluster deployment
+
+Once the app image has been pushed to ECR, change directory to `infrastructure/environments`.
+
+```bash
+# From the current directory which should be `app`, run this command
+cd ../infrastructure/environments
+```
+
+#### Generate a keypair used to SSH into the bastion host.
+
+```bash
+ssh-keygen -m PEM
+```
+
+Follow the prompt and name the keypair output file `ceros`.
+Add the generated `ceros.pub` file which should be in `infrastructure/environments` to `public_key_path` variable in  `terraform.tsvars` file
+Update the rest of the variables defined in `terraform.tfvars` file with the correct values.
+
+#### Plan the infrastructure
+
+```bash
+terraform plan --var-file terraform.tfvars \
+    -out terraform.tfplan.d/terraform.tfplan \
+    -state terraform.tfstate \
+    -state-out terraform.tfstate
+```
+
+#### Apply the plan
+
+```bash
+terraform apply "terraform.tfplan.d/terraform.tfplan"
+```
+
+After the ECS cluster and its components have been created successfully, the url to access the application on the browser will be outputted in console.
+
+### Destroy the infrastructure
+
+To destroy the infrastructure, run the command
+
+```bash
+terraform destroy --var-file terraform.tfvars 
+```
