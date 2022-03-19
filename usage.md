@@ -113,7 +113,8 @@ terraform apply "terraform.tfplan.d/terraform.tfplan"
 
 The build script is defined in `app/build.sh` in the root directory.
 
-Update the environment variable value `REPO_URL` with the `repository_url` outputted from the ECR repository.
+Update the environment variables `REGION`, `PROFILE` and `REPO_URL` with their correct values.
+The value of `REPO_URL` should be the `repository_url` outputted from the ECR repository.
 
 To build and push the image run
 
